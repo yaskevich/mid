@@ -23,16 +23,12 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 3100,
+    port: 2000,
     proxy: {
       '/api': {
-        target: 'http://localhost:3101/',
+        target: 'http://dantiscus.ibi.uw.edu.pl/itinerarium.php',
         changeOrigin: true,
         secure: false,
-        ws: true,
-      },
-      '/ws': {
-        target: 'ws://localhost:3101/',
         ws: true,
       },
     },
