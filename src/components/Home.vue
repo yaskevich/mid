@@ -7,37 +7,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, toRaw, markRaw, shallowRef } from 'vue';
-import { Map, NavigationControl, Marker, Popup, FullscreenControl, LngLatBounds } from 'maplibre-gl';
+import { ref, reactive, onMounted, onBeforeUnmount, toRaw, markRaw, shallowRef, watch } from 'vue';
+import { Map, NavigationControl, Marker, Popup, FullscreenControl, AttributionControl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Position, Point, FeatureCollection, Feature } from 'geojson';
-import type { GeoJSONSource, StyleSpecification, ResourceTypeEnum, MapOptions, LngLatLike } from 'maplibre-gl';
+import type { GeoJSONSource, StyleSpecification, ResourceType, MapOptions, LngLatLike, LngLatBoundsLike } from 'maplibre-gl';
 import { isMapboxURL, transformMapboxUrl } from 'maplibregl-mapbox-request-transformer';
-import store from '../store';
-// import project from '../../package.json';
-// interface keyable {
-//   [key: string]: any;
-// }
+// import store from '../store';
+import { useRoute } from 'vue-router';
+import { bbox } from '@turf/turf';
 
-// const serverUrl = `ws://${window.location.host}/ws`;
-
-// const socket = new WebSocket(serverUrl);
-// socket.addEventListener('open', event => {
-//   console.log('ws open');
-//   socket.send('hi from client');
-// });
-
-// socket.addEventListener('message', function (event) {
-//   console.log('Message from server ', event.data);
-// });
+const route = useRoute();
+console.log(route.query);
 
 const mapContainer = ref<HTMLElement>();
 const mapInstance = ref<Map>();
-const hideMap = ref(false);
-const marker = shallowRef<Marker>();
-const showModal = ref(false);
-const item = ref<Feature>();
-const geo = store.source;
+const geo = reactive({} as FeatureCollection);
+const isInit = ref(false);
+
+const fitToData = (map: Map) => {
+  const featuresCount = geo.features.length;
+  if (featuresCount) {
+    if (featuresCount === 1 && geo.features[0].geometry.type === 'Point') {
+      const center = geo.features[0].geometry?.coordinates as LngLatLike;
+      map.jumpTo({ center, zoom: 6 });
+    }
+    else {
+      const bounds = bbox(geo) as LngLatBoundsLike;
+      // const bounds: LngLatBoundsLike = coordinates.reduce(
+      //   (bound: any, coord: Position) => bound.extend(coord),
+      //   new LngLatBounds(coordinates[0], coordinates[0])
+      // );
+      map.fitBounds(bounds, { padding: 50 });
+    }
+  }
+};
+
+const getGeoJSON = async (query: string) => {
+  // return;
+  const endpoint = import.meta.env.MODE === 'production' ? import.meta.env.VITE_API : '/api';
+  const response = await fetch(`${endpoint}${query}`);
+  if (response.status === 200) {
+    const data = await response.json();
+    Object.assign(geo, data);
+  } else {
+    console.log("fetching error");
+  }
+};
+
+watch(route, async (to) => {
+  // console.log("route change:", to.fullPath, isInit.value);
+  const map = mapInstance?.value;
+  if (isInit.value && map) {
+    const src = map.getSource('points-source') as GeoJSONSource;
+    if (src) {
+      await getGeoJSON(to.fullPath);
+      src.setData(geo as any);
+      fitToData(map);
+    }
+  }
+}, { flush: 'pre', immediate: true, deep: true });
 
 const opts = {
   map_vector: false,
@@ -47,7 +76,7 @@ const opts = {
   map_mapbox_key: null,
 };
 
-const initMap = async (lngLat: [number, number]) => {
+const initMap = async () => {
   const {
     map_vector: isVector,
     map_tile: tilePath,
@@ -65,8 +94,6 @@ const initMap = async (lngLat: [number, number]) => {
         type: 'raster',
         tiles: [tileServer],
         tileSize: 256,
-        attribution:
-          '© <a target="_top" rel="noopener" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
     },
     layers: [
@@ -75,7 +102,7 @@ const initMap = async (lngLat: [number, number]) => {
         type: 'raster',
         source: 'raster-tiles',
         minzoom: 0,
-        maxzoom: 22,
+        maxzoom: 20,
       },
     ],
   } as StyleSpecification;
@@ -87,13 +114,13 @@ const initMap = async (lngLat: [number, number]) => {
       container: mapContainer.value,
       style,
       pixelRatio: window.devicePixelRatio,
-      center: lngLat,
+      // center: lngLat,
       zoom: 2,
       // zoom: 12,
     } as MapOptions;
 
     if (isMapbox && mapboxKey) {
-      mapSetup.transformRequest = (url: string, rt?: ResourceTypeEnum) =>
+      mapSetup.transformRequest = (url: string, rt?: ResourceType) =>
         isMapboxURL(url) ? transformMapboxUrl(url, String(rt), mapboxKey) : { url };
     }
 
@@ -202,7 +229,7 @@ const initMap = async (lngLat: [number, number]) => {
             // console.log(e.features[0]?.properties?.id, e.features[0]?.properties);
             map.getCanvas().style.cursor = 'pointer';
             const coordinates = (e.features?.[0]?.geometry as Point)?.coordinates?.slice();
-            const description = e?.features?.[0]?.properties?.info || '🗅';
+            const description = e?.features?.[0]?.properties?.note || '🗅';
             while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
               coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
             }
@@ -221,14 +248,12 @@ const initMap = async (lngLat: [number, number]) => {
           popup.remove();
         });
 
-        const coordinates = geo.features.map((x: Feature) => (x?.geometry as Point)?.coordinates);
-        const bounds = coordinates.reduce(
-          (bound: any, coord: Position) => bound.extend(coord),
-          new LngLatBounds(coordinates[0], coordinates[0])
-        );
-        map.fitBounds(bounds, { padding: 50 });
+        map.addControl(new AttributionControl({
+          customAttribution: (import.meta.env.VITE_MAP ? import.meta.env.VITE_MAP + ' ' : '') + '© <a target="_top" rel="noopener" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          compact: false
+        }));
+        fitToData(map);
       }
-      ////
     });
 
     return map;
@@ -237,23 +262,9 @@ const initMap = async (lngLat: [number, number]) => {
 
 onMounted(async () => {
   if (mapContainer.value) {
-    // console.log('tkn',store.state.token);
-    // if (store?.state?.token) {
-    //   const response = await fetch('/api/geo', {
-    //     headers: { Authorization: `Bearer ${store.state.token}` },
-    //   });
-    //   if (response.status === 200) {
-    //     const data = await response.json();
-    //     Object.assign(geo, data);
-    //   } else {
-    //     if (response.status === 401) {
-    //       localStorage.removeItem('token');
-    //     }
-    //     store.state.token = '';
-    //   }
-    // }
-
-    mapInstance.value = await initMap([18.652778, 54.350556]);
+    await getGeoJSON(window.location.search);
+    mapInstance.value = await initMap();
+    isInit.value = true;
   }
 });
 </script>
