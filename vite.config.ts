@@ -1,12 +1,15 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import Checker from 'vite-plugin-checker';
 import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 
-// https://vitejs.dev/config/
 export default defineConfig({
+  base:
+    loadEnv('', process.cwd(), 'MODE')?.['MODE'] === 'production'
+      ? loadEnv('', process.cwd(), 'VITE_BASE')?.['VITE_BASE']
+      : '',
   plugins: [
     vue(),
     Checker({ typescript: true }),
@@ -23,10 +26,10 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 2000,
+    port: Number(loadEnv('', process.cwd(), 'VITE_PORT')?.['VITE_PORT']) || 8080,
     proxy: {
       '/api': {
-        target: 'http://dantiscus.ibi.uw.edu.pl/itinerarium.php',
+        target: loadEnv('', process.cwd(), 'VITE_API')?.['VITE_API'],
         changeOrigin: true,
         secure: false,
         ws: true,
