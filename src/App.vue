@@ -9,7 +9,7 @@
           <!-- <router-link to="/list">List</router-link> -->
         </n-space>
         <!-- <router-view /> -->
-        <Home />
+        <Home ref="mapComponentRef" />
       </n-layout-content>
       <n-layout-footer position="absolute" class="footer">
         <n-space justify="center">
@@ -22,11 +22,11 @@
   </n-message-provider>
 </template>
 <script setup lang="ts">
-import router from './router';
+// import router from './router';
 import Home from './components/Home.vue';
-import { h, Component, ref, reactive, watch } from 'vue';
+import { h, Component, ref, reactive, watch, onMounted } from 'vue';
 import { MenuOption, NIcon } from 'naive-ui';
-import { RouterLink, useRoute } from 'vue-router';
+// import { RouterLink, useRoute } from 'vue-router';
 import {
   LogOutFilled,
   EditNoteFilled,
@@ -39,13 +39,29 @@ import {
   BookmarkFilled,
 } from '@vicons/material';
 
-const route = useRoute();
-const activeKey = ref<string | null>(null); // vuerouter?.name||'Home'
+const mapComponentRef = ref<typeof Home>();
+// const route = useRoute();
+const activeKey = ref<string | null>(null);
 
-watch(route, async (to) => {
-  // console.log("app route change:", to.fullPath);
-  activeKey.value = Object.values(route.query).join('') || 'all';
-});
+const setActiveKey = () => {
+  const queryParts = window.location.search.split(/=|&/);
+  activeKey.value = (queryParts?.[1] + queryParts?.[3]) || 'all';
+};
+
+setActiveKey();
+
+window.onpopstate = async () => {
+  // console.log("history change", window.location.search);
+  if (mapComponentRef?.value) {
+    await mapComponentRef.value.setMapData(window.location.search);
+  }
+  setActiveKey();
+};
+
+// watch(route, async (to) => {
+// console.log("app route change:", to.fullPath, route.query);
+// activeKey.value = Object.values(route.query).join('') || 'all';
+// });
 
 // onMounted(async () => {
 // });
@@ -56,8 +72,10 @@ const renderIcon = (icon: Component) => {
 
 const processMenu = async (key: string, item: MenuOption) => {
   console.log("click", key);
-  if (!item?.children) {
-    router.push(String(item.path));
+  if (!item?.children && mapComponentRef?.value) {
+    // router.push(String(item.path));
+    history.pushState({}, '', String(item.path) || '/');
+    await mapComponentRef.value.setMapData(window.location.search);
   }
 };
 
@@ -166,19 +184,8 @@ const menuOptions: MenuOption[] = [
 }
 
 .nav {
-  // padding: 1rem;
+  padding: 1rem;
   // background-color: #aad3df;
 
-  div>a {
-    text-decoration: none;
-    color: #2c3e50;
-    font-weight: 700;
-
-    &.router-link-exact-active,
-    &.router-link-active {
-      // color: #42b983;
-      color: #aad3df;
-    }
-  }
 }
 </style>
