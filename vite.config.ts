@@ -6,10 +6,7 @@ import Components from 'unplugin-vue-components/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 
 export default defineConfig({
-  base:
-    loadEnv('', process.cwd(), 'MODE')?.['MODE'] === 'production'
-      ? loadEnv('', process.cwd(), 'VITE_BASE')?.['VITE_BASE']
-      : '',
+  base: process.env.NODE_ENV === 'production' ? loadEnv('', process.cwd(), 'VITE_BASE')?.['VITE_BASE'] : '',
   plugins: [
     vue(),
     Checker({ typescript: true }),
