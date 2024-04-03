@@ -1,17 +1,20 @@
 <template>
   <n-message-provider>
     <n-layout position="absolute">
-      <n-layout-header id="nav">
+      <n-layout-header id="nav" style="margin-top: 1rem; font-size: 1.2rem;padding-left:3px;padding-right: 3px;">
+        <div style="text-align:center" class="main-title">
+          <div style="text-align:left;display: inline-block;">
+            <div style="margin-left:1.5rem;margin-right:1.5rem;"> Ioannes Dantiscus' Texts &amp; Correspondence: Map
+            </div>
+            <n-menu v-model:value="activeKey" mode="horizontal" :options="menuOptions" @update:value="processMenu"
+              :root-indent="30" :indent="30" />
+          </div>
+        </div>
       </n-layout-header>
       <n-layout-content class="content">
-        <n-space justify="center" class="nav">
-          <n-menu v-model:value="activeKey" mode="horizontal" :options="menuOptions" @update:value="processMenu" />
-          <!-- <router-link to="/list">List</router-link> -->
-        </n-space>
-        <!-- <router-view /> -->
         <Home ref="mapComponentRef" />
       </n-layout-content>
-      <n-layout-footer position="absolute" class="footer">
+      <n-layout-footer class="f4ooter">
         <n-space justify="center">
           <n-button text tag="a" href="https://yaskevich.com/" target="_blank">
             2023&nbsp;•&nbsp;Alyaxey Yaskevich
@@ -37,15 +40,33 @@ import {
   CollectionsBookmarkFilled,
   BookmarksFilled,
   BookmarkFilled,
+  MenuOpenFilled,
 } from '@vicons/material';
 
 const mapComponentRef = ref<typeof Home>();
 // const route = useRoute();
-const activeKey = ref<string | null>(null);
+
+const codemap =
+{
+  'all': 'All places',
+  'allsending': 'Places of sending of all letters',
+  'allsendingFrom': 'Places of sending of letters from Dantiscus',
+  'allsendingTo': 'Places of sending of letters to Dantiscus',
+  'allreceiving': 'Places of receiving of letters to Dantiscus',
+  'allmentioned': 'Places mentioned in letters',
+  'all-la': 'All places in Ioannes Dantiscus\' Latin texts',
+  'clatsending': 'Places of sending of Dantiscus\' Latin letters',
+  'clatmentioned': 'Places mentioned in Dantiscus\' Latin letters',
+  'all-de': ' All places in Ioannes Dantiscus\' German texts',
+  'cgersending': 'Places of sending of Dantiscus\' German letters',
+  'cgermentioned': 'Places mentioned in Dantiscus\' German letters'
+};
+
+const activeKey = ref<keyof typeof codemap>();
 
 const setActiveKey = () => {
   const queryParts = window.location.search.split(/=|&/);
-  activeKey.value = (queryParts?.[1] + queryParts?.[3]) || 'all';
+  (activeKey.value as any) = (queryParts?.[1] + queryParts?.[3]) || 'all';
 };
 
 setActiveKey();
@@ -81,98 +102,110 @@ const processMenu = async (key: string, item: MenuOption) => {
 
 const menuOptions: MenuOption[] = [
   {
-    label: 'Corpus',
-    key: 'corpus',
-    icon: renderIcon(CollectionsBookmarkFilled),
-    children: [
-      {
-        label: 'All',
-        key: 'all',
-        path: '',
-        icon: renderIcon(MailFilled),
-      },
-      {
-        label: 'Sending',
-        key: 'allsending',
-        path: '?corp=all&index=sending',
-        icon: renderIcon(CallMadeFilled),
-      },
-      {
-        label: 'Sending from ID',
-        key: 'allsendingFrom',
-        path: '?corp=all&index=sendingFrom',
-        icon: renderIcon(LogOutFilled),
-      },
-      {
-        label: 'Sending to ID',
-        key: 'allsendingTo',
-        path: '?corp=all&index=sendingTo',
-        icon: renderIcon(SendFilled), // OutboundFilled
-      },
-      {
-        label: 'Receiving to ID',
-        key: 'allreceiving',
-        path: '?corp=all&index=receiving',
-        icon: renderIcon(LogInFilled),
-      },
-      {
-        label: 'Mentions',
-        key: 'allmentioned',
-        path: '?corp=all&index=mentioned',
-        icon: renderIcon(EditNoteFilled),
-      },
-    ],
-  },
-  {
-    label: 'Latin',
-    key: 'all-la',
-    path: '',
-    icon: renderIcon(BookmarksFilled),
-    children: [
-      {
-        label: 'Sending from ID',
-        key: 'clatsending',
-        path: '?corp=clat&index=sending',
-        icon: renderIcon(LogOutFilled),
-      },
-      {
-        label: 'Mentions',
-        key: 'clatmentioned',
-        path: '?corp=clat&index=mentioned',
-        icon: renderIcon(EditNoteFilled),
-      },
-    ]
-  },
-  {
-    label: 'German',
-    key: 'all-de',
-    path: '',
-    icon: renderIcon(BookmarkFilled),
-    children: [
-      {
-        label: 'Sending from ID',
-        key: 'cgersending',
-        path: '?corp=cger&index=sending',
-        icon: renderIcon(LogOutFilled),
-      },
-      {
-        label: 'Mentions',
-        key: 'cgermentioned',
-        path: '?corp=cger&index=mentioned',
-        icon: renderIcon(EditNoteFilled),
-      },
-    ]
-  },
+    label: () => activeKey.value ? codemap[activeKey.value] : '',
+    key: 'hello',
+    icon: renderIcon(MenuOpenFilled),
+    children: [{
+      label: 'Corpus',
+      key: 'corpus',
+      icon: renderIcon(CollectionsBookmarkFilled),
+      children: [
+        {
+          label: codemap['all'],
+          key: 'all',
+          path: '',
+          icon: renderIcon(MailFilled),
+        },
+        {
+          label: codemap['allsending'],
+          key: 'allsending',
+          path: '?corp=all&index=sending',
+          icon: renderIcon(CallMadeFilled),
+        },
+        {
+          label: codemap['allsendingFrom'],
+          key: 'allsendingFrom',
+          path: '?corp=all&index=sendingFrom',
+          icon: renderIcon(LogOutFilled),
+        },
+        {
+          label: codemap['allsendingTo'],
+          key: 'allsendingTo',
+          path: '?corp=all&index=sendingTo',
+          icon: renderIcon(SendFilled), // OutboundFilled
+        },
+        {
+          label: codemap['allreceiving'],
+          key: 'allreceiving',
+          path: '?corp=all&index=receiving',
+          icon: renderIcon(LogInFilled),
+        },
+        {
+          label: codemap['allmentioned'],
+          key: 'allmentioned',
+          path: '?corp=all&index=mentioned',
+          icon: renderIcon(EditNoteFilled),
+        },
+      ],
+    },
+    {
+      label: codemap['all-la'],
+      key: 'all-la',
+      path: '',
+      icon: renderIcon(BookmarksFilled),
+      children: [
+        {
+          label: codemap['clatsending'],
+          key: 'clatsending',
+          path: '?corp=clat&index=sending',
+          icon: renderIcon(LogOutFilled),
+        },
+        {
+          label: codemap['clatmentioned'],
+          key: 'clatmentioned',
+          path: '?corp=clat&index=mentioned',
+          icon: renderIcon(EditNoteFilled),
+        },
+      ]
+    },
+    {
+      label: codemap['all-de'],
+      key: 'all-de',
+      path: '',
+      icon: renderIcon(BookmarkFilled),
+      children: [
+        {
+          label: codemap['cgersending'],
+          key: 'cgersending',
+          path: '?corp=cger&index=sending',
+          icon: renderIcon(LogOutFilled),
+        },
+        {
+          label: codemap['cgermentioned'],
+          key: 'cgermentioned',
+          path: '?corp=cger&index=mentioned',
+          icon: renderIcon(EditNoteFilled),
+        },
+      ]
+    },]
+  }
 ];
 
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
+.main-title,
+.n-layout {
+  background-color: rgb(250, 250, 252) !important;
+
+}
+
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
+
 }
 
 .content {
@@ -180,7 +213,8 @@ const menuOptions: MenuOption[] = [
 }
 
 .footer {
-  padding: 0.25rem
+  margin-top: -1rem;
+  padding: 0.25rem;
 }
 
 .nav {
