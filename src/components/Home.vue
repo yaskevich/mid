@@ -1,5 +1,5 @@
 <template>
-  <n-space vertical>
+  <!-- <n-space vertical>
     <n-space justify="center">
       <n-button-group size="tiny">
         <n-button v-for="(item, index) in layersNames" ghost :type="index === activeMap ? 'primary' : 'default'"
@@ -14,12 +14,15 @@
         <div class="map" ref="mapContainer"></div>
       </div>
     </div>
-  </n-space>
+  </n-space> -->
+  <div class="map-wrap">
+    <div class="map" ref="mapContainer"></div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, toRaw, markRaw, shallowRef, watch } from 'vue';
-import { Map, NavigationControl, Marker, Popup, FullscreenControl, AttributionControl, LngLatBounds } from 'maplibre-gl';
+import { Map, IControl, NavigationControl, Marker, Popup, FullscreenControl, AttributionControl, LngLatBounds } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Position, Point, FeatureCollection, Feature } from 'geojson';
 import type { GeoJSONSource, StyleSpecification, ResourceType, MapOptions, LngLatLike, LngLatBoundsLike } from 'maplibre-gl';
@@ -65,6 +68,52 @@ const attributionOSM = '© <a target="_top" rel="noopener" href="https://www.ope
 const styles = [osmStyle, 'https://demotiles.maplibre.org/style.json',];
 if (mapboxKey && import.meta.env.VITE_MAPBOX_MAP) {
   styles.push('mapbox://styles/' + import.meta.env.VITE_MAPBOX_MAP);
+}
+
+const buttons = ['OSM', 'States', 'Blank'];
+
+class LayerSwitcher implements IControl {
+  private _container: HTMLElement | undefined;
+  private _buttons: Array<HTMLButtonElement> | undefined;
+  private _map: Map | undefined;
+
+  onAdd(map: Map) {
+    this._map = map;
+    this._container = document.createElement('div');
+    this._container.className = 'maplibregl-ctrl maplibregl-buttonset';
+    this._buttons = buttons.map((x, i) => this._createButton(this._container!, (i ? '' : ' set ') + 'maplibregl-button', x));
+    return this._container;
+  }
+
+  onRemove() {
+    if (this?._container?.parentNode) {
+      this._container.parentNode.removeChild(this._container);
+    }
+    this._map = undefined;
+  }
+
+  _createButton(root: HTMLElement, className: string, title: string) {
+    const el = window.document.createElement('button')
+    el.className = className;
+    el.textContent = title;
+    el.addEventListener('click', () => {
+      if (!el.classList.contains('set') && this._buttons?.length) {
+        // console.log(title, buttons.indexOf(title));
+        const selected = this._buttons.find(x => x.classList.contains('set'));
+        if (selected) {
+          selected.classList.remove('set');
+        }
+        el.classList.add('set');
+        if (mapInstance.value) {
+          mapInstance.value.setStyle(styles[buttons.indexOf(title)], { diff: false });
+        }
+      }
+    });
+    // this._setup = true;
+    root.appendChild(el);
+    return el;
+  }
+
 }
 
 const handleClick = (index: number) => {
@@ -220,7 +269,7 @@ const initMap = async () => {
     const map = markRaw(new Map(mapSetup));
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new FullscreenControl({ container: mapContainer.value }));
-
+    map.addControl(new LayerSwitcher(), 'top-left');
     map.on('load', async () => {
       console.log('map load');
       map.resize();
@@ -256,13 +305,14 @@ onMounted(async () => {
 .map-wrap {
   position: relative;
   width: 100%;
-  height: calc(100vh - 135px);
+  height: calc(100vh - 130px);
 }
 
 .map {
   position: absolute;
   width: 100%;
-  height: calc(100vh - 135px);
+  height: calc(100vh - 130px);
+  ;
 }
 
 .maplibregl-popup {
@@ -272,5 +322,29 @@ onMounted(async () => {
 
 :deep(.mapbox-improve-map) {
   display: none;
+}
+
+// :deep(.maplibregl-buttonset) {
+// background-color: #fff;
+// border-radius: 4px;
+// }
+
+:deep(.maplibregl-button) {
+  background-color: #fff;
+  border: 0;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, .1);
+  margin-right: 3px;
+  border-radius: 4px;
+
+  &.set {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, .3);
+    background-color: lightgray !important;
+  }
+
+  &:hover:not(.set) {
+    // background-color: rgb(0 0 0/5%) !important;
+    background-color: #ddd !important;
+
+  }
 }
 </style>
