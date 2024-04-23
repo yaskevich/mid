@@ -56,10 +56,10 @@ const codemap =
   'allmentioned': 'Places mentioned in letters',
   'all-la': 'All places in Ioannes Dantiscus\' Latin texts',
   'clatsending': 'Places of sending of Dantiscus\' Latin letters',
-  'clatmentioned': 'Places mentioned in Dantiscus\' Latin letters',
+  'clatmentioned': 'Places mentioned in Dantiscus\' Latin texts',
   'all-de': ' All places in Ioannes Dantiscus\' German texts',
   'cgersending': 'Places of sending of Dantiscus\' German letters',
-  'cgermentioned': 'Places mentioned in Dantiscus\' German letters'
+  'cgermentioned': 'Places mentioned in Dantiscus\' German texts'
 };
 
 const activeKey = ref<keyof typeof codemap>();
